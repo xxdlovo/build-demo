@@ -1,6 +1,7 @@
 # 功能
 用来演示nuxt3打包并通过[upgradelink-upload](https://github.com/wodepig/upgradelink-upload-xxdl)自动上传的项目
 [视频](https://www.bilibili.com/video/BV1uj2aBREeL)
+
 ## 配置
 使用逻辑: 
 * 当commit消息包含"自动更新"或"exe"时,触发部署
