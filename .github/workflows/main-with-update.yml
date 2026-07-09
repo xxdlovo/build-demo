@@ -38,7 +38,7 @@ jobs:
           api_base_url: ${{ vars.CI_API_BASE_URL }}
           api_token: ${{ secrets.CI_API_TOKEN }}
           type: file
-          slug: nuxt4-app
+          slug: build-demo
           source_dir: .output
           channel: stable
           environment: prod
