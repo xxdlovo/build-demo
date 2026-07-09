@@ -29,7 +29,7 @@ jobs:
 
       - name: Get current date
         id: date
-        run: echo "datetime=$(date +'%m%d%H%M')" >> $GITHUB_OUTPUT
+        run: echo "datetime=$(TZ='Asia/Shanghai' date +'%m%d%H%M')" >> $GITHUB_OUTPUT
 
       - name: Publish Nuxt 4 build output
         uses: xxdlovo/file-upload-actions@main
