@@ -1,0 +1,47 @@
+name: Demo Nuxt 4 File Release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  publish-nuxt4:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: corepack enable pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Nuxt 4
+        run: pnpm build
+
+      - name: Get current date
+        id: date
+        run: echo "datetime=$(date +'%m%d%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Publish Nuxt 4 build output
+        uses: wodepig/file-upload-actions@latest
+        with:
+          api_base_url: ${{ vars.CI_API_BASE_URL }}
+          api_token: ${{ secrets.CI_API_TOKEN }}
+          type: file
+          slug: nuxt4-app
+          source_dir: .output
+          channel: stable
+          environment: prod
+          publish: true
+          release_notes: $COMMIT_MESSAGE
+          file_name: ${{ github.event.repository.name }}_dist_${{ steps.date.outputs.datetime }}.zip
