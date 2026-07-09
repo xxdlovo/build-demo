@@ -1,33 +1,43 @@
-# ========== 构建阶段 ==========
-FROM node:20-alpine AS builder
+# syntax=docker/dockerfile:1
 
+FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
-# 安装 pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable
 
-# 复制依赖配置文件
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# 安装依赖
-RUN pnpm install --frozen-lockfile
-
-# 复制项目源代码
 COPY . .
-
-# 构建 Nuxt 应用（生成 .output 目录）
 RUN pnpm build
 
-# ========== 运行阶段 ==========
-FROM node:20-alpine
-
+FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 
-# 复制构建产物
-COPY --from=builder /app/.output .output
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
+ENV DATABASE_URL=file:/app/data/app.db
+ENV RUN_DB_MIGRATIONS=true
+ENV PM2_HOME=/home/nuxt/.pm2
 
-# 暴露端口
+RUN npm install -g pm2 \
+  && useradd --system --create-home --uid 1001 nuxt \
+  && mkdir -p /app/data /home/nuxt/.pm2 \
+  && chown -R nuxt:nuxt /app /home/nuxt/.pm2 \
+  && npm cache clean --force
+
+COPY --from=builder --chown=nuxt:nuxt /app/.output ./.output
+COPY --from=builder --chown=nuxt:nuxt /app/node_modules ./node_modules
+COPY --chown=nuxt:nuxt package.json drizzle.config.ts ./
+COPY --chown=nuxt:nuxt db ./db
+COPY --chown=nuxt:nuxt docker-entrypoint.sh ./docker-entrypoint.sh
+
+RUN chmod +x ./docker-entrypoint.sh
+
+USER nuxt
 EXPOSE 3000
+VOLUME ["/app/data"]
 
-# 启动命令
-CMD ["node", ".output/server/index.mjs"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["pm2-runtime", "start", ".output/server/index.mjs", "--name", "file-update-nuxt"]
