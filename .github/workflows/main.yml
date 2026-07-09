@@ -5,84 +5,116 @@ on:
     branches:
       - master
 
+env:
+  IMAGE_NAME: registry.cn-beijing.aliyuncs.com/xxdl_work/${{ github.event.repository.name }}:latest
+  CONTAINER_NAME: ${{ github.event.repository.name }}
+
 jobs:
   build-push:
-    if: contains(github.event.head_commit.message, '自动更新') || contains(github.event.head_commit.message, 'exe')
-    environment: prod
+    name: 构建并推送镜像
+    if: contains(github.event.head_commit.message, '部署')
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      APP_VERSION: 30
+    environment: prod
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Aliyun Container Registry
+        uses: docker/login-action@v3
         with:
-          node-version: '20.19.4'
-          # 获取git commit消息并去除"自动更新"
-      - name: Get commit message and clean it
-        id: get_commit_message
-        run: |
-          # 获取最新的 commit 消息
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          
-          # 清理 commit 消息：去除换行符和特殊字符
-          CLEANED_MESSAGE=$(echo "$COMMIT_MESSAGE" | tr -d '\n' | sed 's/自动更新//g')
-          
-          # 将清理后的 commit 消息设置为环境变量
-          echo "cleaned_message=$CLEANED_MESSAGE" >> $GITHUB_ENV
-      - name: Install pnpm
-        run: npm install -g pnpm
+          registry: registry.cn-beijing.aliyuncs.com
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
 
-      - name: Install dependencies (with fixes)
-        run: pnpm install
-
-      - name: Build project
-        run: pnpm build
-
-      - name: Zip .output directory
-        run: zip -r app.zip .output
-
-      - name: Create Release and Upload Asset
-        uses: softprops/action-gh-release@v2
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
         with:
-          tag_name: v${{ env.APP_VERSION }}
-          name: Release v${{ env.APP_VERSION }}
-          files: app.zip
-          make_latest: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_NAME }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Get Release Asset Temporary URL
-        id: get_download_url
-        run: |
-          BROWSER_URL=$(gh api repos/${{ github.repository }}/releases/tags/v${{ env.APP_VERSION }} --jq '.assets[] | select(.name=="app.zip") | .browser_download_url')
-          echo "browser_url=${BROWSER_URL}"
-          TEMP_URL=$(curl -s -D - -o /dev/null --max-redirs 0 \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "${BROWSER_URL}" \
-            | grep -i "^location:" | awk '{print $2}' | tr -d '\r')
-          echo "temp_url=${TEMP_URL}"
-          echo "url=${TEMP_URL}" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push To UpgradeLink
-        id: push-upgradelink
-        uses: toolsetlink/upgradelink-action@3.0.2
+  deploy:
+    name: 部署到服务器
+    if: contains(github.event.head_commit.message, '部署')
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Deploy by SSH
+        uses: appleboy/ssh-action@v1.2.2
         with:
-          access_key: ${{ secrets.UPGRADE_LINK_ACCESS_KEY }}
-          access_secret: ${{ secrets.UPGRADE_LINK_ACCESS_SECRET }}
-          config: |
-            {
-              "app_type": "file",
-              "request": {
-                "app_key": "${{ secrets.UPGRADE_LINK_APP_KEY }}",
-                "version": "${{ env.APP_VERSION }}",
-                "url": "${{ steps.get_download_url.outputs.url }}",
-                "prompt_upgrade_content": "新版本已发布，包含重要功能更新和 bug 修复"
-              }
-            }
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            set -e
+
+            sudo mkdir -p /opt/docker/${{ env.CONTAINER_NAME }}/data
+
+            echo "${{ secrets.ALIYUN_PASSWORD }}" | sudo docker login registry.cn-beijing.aliyuncs.com \
+              -u "${{ secrets.ALIYUN_USERNAME }}" \
+              --password-stdin
+
+            sudo docker pull ${{ env.IMAGE_NAME }}
+            sudo docker stop ${{ env.CONTAINER_NAME }} || true
+            sudo docker rm ${{ env.CONTAINER_NAME }} || true
+
+            sudo docker run -d \
+              --name ${{ env.CONTAINER_NAME }} \
+              --restart unless-stopped \
+              -p ${{ vars.EXT_PORT }}:41793 \
+              -v /opt/docker/${{ env.CONTAINER_NAME }}/data:/app/data \
+              -e NUXT_SESSION_PASSWORD="${{ secrets.NUXT_SESSION_PASSWORD }}" \
+              -e DOWNLOAD_URL_EXPIRES_SECONDS="${{ vars.DOWNLOAD_URL_EXPIRES_SECONDS }}" \
+              -e UPDATE_TOKEN_REQUIRED="${{ vars.UPDATE_TOKEN_REQUIRED }}" \
+              -e FILE_UPDATE_TOKEN_REQUIRED="${{ vars.FILE_UPDATE_TOKEN_REQUIRED }}" \
+              -e CI_API_TOKEN="${{ secrets.CI_API_TOKEN }}" \
+              ${{ env.IMAGE_NAME }}
+
+            sudo rm -f ~/.docker/config.json
+
+  notify:
+    name: 发送部署通知
+    if: always() && contains(github.event.head_commit.message, '部署')
+    needs:
+      - build-push
+      - deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify success
+        if: needs.build-push.result == 'success' && needs.deploy.result == 'success'
+        uses: easychen/github-action-server-chan@v1.0.0
+        with:
+          sendkey: ${{ secrets.sendkey }}
+          title: "🟢 ${{ github.event.repository.name }} 部署成功"
+          desp: |
+            部署状态：成功
+            构建结果：${{ needs.build-push.result }}
+            部署结果：${{ needs.deploy.result }}
+            分支：${{ github.ref_name }}
+            提交：${{ github.sha }}
+            提交信息：${{ github.event.head_commit.message }}
+            触发人：${{ github.actor }}
+            查看详情：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Notify failure
+        if: needs.build-push.result != 'success' || needs.deploy.result != 'success'
+        uses: easychen/github-action-server-chan@v1.0.0
+        with:
+          sendkey: ${{ secrets.sendkey }}
+          title: "🔴 ${{ github.event.repository.name }} 部署失败"
+          desp: |
+            部署状态：失败
+            构建结果：${{ needs.build-push.result }}
+            部署结果：${{ needs.deploy.result }}
+            分支：${{ github.ref_name }}
+            提交：${{ github.sha }}
+            提交信息：${{ github.event.head_commit.message }}
+            触发人：${{ github.actor }}
+            查看详情：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
