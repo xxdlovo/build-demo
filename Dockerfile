@@ -19,7 +19,6 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 
 RUN npm install -g pm2
-
 COPY --from=builder /app/.output ./.output
 
 EXPOSE 3000

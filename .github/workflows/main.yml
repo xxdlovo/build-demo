@@ -88,8 +88,10 @@ jobs:
             sudo docker run -d \
               --name ${{ env.CONTAINER_NAME }} \
               --restart unless-stopped \
-              -p ${{ vars.EXT_PORT }}:45871 \
+              -p 45871:3000 \
               -v /opt/docker/${{ env.CONTAINER_NAME }}/data:/app/data \
+              -e PM2_PUBLIC_KEY="${{ secrets.PM2_PUBLIC_KEY }}" \
+              -e PM2_SECRET_KEY="${{ secrets.PM2_SECRET_KEY }}" \
               ${{ env.IMAGE_NAME }}
 
             sudo rm -f ~/.docker/config.json
