@@ -42,5 +42,5 @@ jobs:
           channel: stable
           environment: prod
           publish: true
-          release_notes: $COMMIT_MESSAGE
+          release_notes: ${{ github.event.head_commit.message }}
           file_name: ${{ github.event.repository.name }}_dist_${{ steps.date.outputs.datetime }}.zip
