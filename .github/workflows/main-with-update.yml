@@ -33,7 +33,7 @@ jobs:
         run: echo "datetime=$(date +'%m%d%H%M')" >> $GITHUB_OUTPUT
 
       - name: Publish Nuxt 4 build output
-        uses: wodepig/file-upload-actions@latest
+        uses: xxdlovo/file-upload-actions@main
         with:
           api_base_url: ${{ vars.CI_API_BASE_URL }}
           api_token: ${{ secrets.CI_API_TOKEN }}
