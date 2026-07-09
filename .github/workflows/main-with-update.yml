@@ -34,7 +34,7 @@ jobs:
       - name: Publish Nuxt 4 build output
         uses: xxdlovo/file-upload-actions@main
         with:
-          api_base_url: ${{ vars.CI_API_BASE_URL }}
+          api_base_url: ${{ secrets.CI_API_BASE_URL }}
           api_token: ${{ secrets.CI_API_TOKEN }}
           type: file
           slug: build-demo
