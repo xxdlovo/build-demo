@@ -2,7 +2,7 @@
 export default defineNuxtConfig({
   nitro:{
     // https://nitro.build/deploy/workers
-    preset: 'node-server'
+    // preset: 'node-server'
   },
   runtimeConfig: {
     db: {
