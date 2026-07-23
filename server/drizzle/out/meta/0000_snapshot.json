@@ -1,0 +1,192 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "5",
+  "dialect": "mysql",
+  "tables": {
+    "sys_users": {
+      "name": "sys_users",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_name": {
+          "autoincrement": false,
+          "name": "user_name",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password": {
+          "default": "''",
+          "autoincrement": false,
+          "name": "password",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nick_name": {
+          "autoincrement": false,
+          "name": "nick_name",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_email": {
+          "default": "''",
+          "autoincrement": false,
+          "name": "user_email",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_phone": {
+          "default": "''",
+          "autoincrement": false,
+          "name": "user_phone",
+          "type": "varchar(11)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_gender": {
+          "default": 0,
+          "autoincrement": false,
+          "name": "user_gender",
+          "type": "tinyint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "balance": {
+          "default": 0,
+          "autoincrement": false,
+          "name": "balance",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "avatar": {
+          "default": "''",
+          "autoincrement": false,
+          "name": "avatar",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "default": 0,
+          "autoincrement": false,
+          "name": "status",
+          "type": "tinyint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "login_ip": {
+          "default": "''",
+          "autoincrement": false,
+          "name": "login_ip",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "login_date": {
+          "autoincrement": false,
+          "name": "login_date",
+          "type": "datetime",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "create_by": {
+          "default": "''",
+          "autoincrement": false,
+          "name": "create_by",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "create_time": {
+          "default": "(CURRENT_TIMESTAMP)",
+          "autoincrement": false,
+          "name": "create_time",
+          "type": "datetime",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "update_by": {
+          "default": "''",
+          "autoincrement": false,
+          "name": "update_by",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "update_time": {
+          "default": "(CURRENT_TIMESTAMP)",
+          "autoincrement": false,
+          "name": "update_time",
+          "type": "datetime",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deleted": {
+          "default": 0,
+          "autoincrement": false,
+          "name": "deleted",
+          "type": "tinyint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "remark": {
+          "autoincrement": false,
+          "name": "remark",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dept_id": {
+          "autoincrement": false,
+          "name": "dept_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {
+        "sys_users_id": {
+          "name": "sys_users_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    }
+  },
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {
+      "sys_users": {
+        "columns": {
+          "create_time": {
+            "isDefaultAnExpression": true
+          },
+          "update_time": {
+            "isDefaultAnExpression": true
+          }
+        }
+      }
+    },
+    "indexes": {}
+  }
+}
