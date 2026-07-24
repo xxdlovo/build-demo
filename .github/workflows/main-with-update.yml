@@ -3,7 +3,7 @@ name: Demo Nuxt 4 File Release
 on:
   push:
     branches:
-      - master
+      - test
 
 jobs:
   publish-nuxt4:
