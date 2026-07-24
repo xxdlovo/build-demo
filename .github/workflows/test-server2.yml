@@ -72,6 +72,10 @@ jobs:
           password: ${{ secrets.SERVER_TWO_PASSWORD }}
           script: |
             set -e
+            if [ ! -f /opt/docker/${{ env.CONTAINER_NAME }}/.env ]; then
+              echo "错误：环境配置文件 /opt/docker/${{ env.CONTAINER_NAME }}/.env 不存在，请先在服务器上创建该文件" >&2
+              exit 1
+            fi
 
             echo "${{ secrets.ALIYUN_PASSWORD }}" | sudo docker login registry.cn-beijing.aliyuncs.com \
               -u "${{ secrets.ALIYUN_USERNAME }}" \
@@ -85,7 +89,7 @@ jobs:
               --name ${{ env.CONTAINER_NAME }} \
               --restart unless-stopped \
               -p ${{ vars.EXT_PORT }}:3000 \
-              -e TZ=Asia/Shanghai \
+              --env-file /opt/docker/${{ env.CONTAINER_NAME }}/.env \
               -v /opt/docker/${{ env.CONTAINER_NAME }}/data:/app/data \
               ${{ env.IMAGE_NAME }}
 
