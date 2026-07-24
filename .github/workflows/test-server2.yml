@@ -27,9 +27,31 @@ jobs:
             echo "enabled=false" >> "$GITHUB_OUTPUT"
           fi
 
+  check-env:
+    name: 检查服务器环境配置
+    needs: deploy-gate
+    if: needs.deploy-gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check .env file exists on server
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SERVER_HOST_TWO }}
+          username: ${{ secrets.SERVER_TWO_USERNAME }}
+          password: ${{ secrets.SERVER_TWO_PASSWORD }}
+          script: |
+            set -e
+            if [ ! -f /opt/docker/${{ env.CONTAINER_NAME }}/.env ]; then
+              echo "错误：环境配置文件 /opt/docker/${{ env.CONTAINER_NAME }}/.env 不存在，请先在服务器上创建该文件" >&2
+              exit 1
+            fi
+            echo "环境配置文件已存在"
+
   build-push:
     name: 构建并推送镜像
-    needs: deploy-gate
+    needs:
+      - deploy-gate
+      - check-env
     if: needs.deploy-gate.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -72,10 +94,6 @@ jobs:
           password: ${{ secrets.SERVER_TWO_PASSWORD }}
           script: |
             set -e
-            if [ ! -f /opt/docker/${{ env.CONTAINER_NAME }}/.env ]; then
-              echo "错误：环境配置文件 /opt/docker/${{ env.CONTAINER_NAME }}/.env 不存在，请先在服务器上创建该文件" >&2
-              exit 1
-            fi
 
             echo "${{ secrets.ALIYUN_PASSWORD }}" | sudo docker login registry.cn-beijing.aliyuncs.com \
               -u "${{ secrets.ALIYUN_USERNAME }}" \
@@ -100,6 +118,7 @@ jobs:
     if: always() && (needs.deploy-gate.outputs.enabled == 'true' || contains(github.event.head_commit.message, '部署'))
     needs:
       - deploy-gate
+      - check-env
       - build-push
       - deploy
     runs-on: ubuntu-latest
@@ -109,6 +128,7 @@ jobs:
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
+          check_env_result="${{ needs.check-env.result }}"
           build_result="${{ needs.build-push.result }}"
           deploy_result="${{ needs.deploy.result }}"
 
@@ -122,10 +142,15 @@ jobs:
             esac
           }
 
+          check_env_label="$(label_result "$check_env_result")"
           build_label="$(label_result "$build_result")"
           deploy_label="$(label_result "$deploy_result")"
 
-          if [ "$build_result" = "success" ] && [ "$deploy_result" = "success" ]; then
+          if [ "$check_env_result" = "failure" ]; then
+            title="🔴 ${{ github.event.repository.name }} 部署失败"
+            status="失败"
+            reason="服务器环境检查未通过，请确认服务器上 .env 文件已创建。"
+          elif [ "$build_result" = "success" ] && [ "$deploy_result" = "success" ]; then
             title="🟢 ${{ github.event.repository.name }} 部署成功"
             status="成功"
             reason="镜像构建和服务器部署均已完成。"
@@ -148,6 +173,7 @@ jobs:
             echo "desp<<EOF"
             echo "部署状态：$status"
             echo "状态说明：$reason"
+            echo "环境检查：$check_env_label ($check_env_result)"
             echo "构建结果：$build_label ($build_result)"
             echo "部署结果：$deploy_label ($deploy_result)"
             echo "分支：${{ github.ref_name }}"
