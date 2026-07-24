@@ -3,7 +3,7 @@ name: 程序部署
 on:
   push:
     branches:
-      - master
+      - test
 
 env:
   IMAGE_NAME: registry.cn-beijing.aliyuncs.com/${{ vars.ali_name_space }}/${{ github.event.repository.name }}:latest
